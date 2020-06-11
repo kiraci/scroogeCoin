@@ -83,7 +83,49 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        // IMPLEMENT THIS
+        //Array of transactions
+        Transaction[] validTx = new Transaction[ possibleTxs.length ];
+
+        int numOfValids = 0;
+
+        //Go trough all transactions
+        for( int counter = 0; counter < possibleTxs.length; counter++ ){
+            // If current transaction is valid
+            if ( this.isValidTx(possibleTxs[counter]) ){
+
+                //Clearing the pool
+                for( int inputCounter = 0; inputCounter < possibleTxs[counter].numInputs(); inputCounter++ ){
+                    byte[] prevTxHash = possibleTxs[counter].getInput(inputCounter).prevTxHash;
+                    int outputIndex = possibleTxs[counter].getInput(inputCounter).outputIndex;
+
+                    UTXO inputCoin = new UTXO( prevTxHash, outputIndex);
+
+                    coinPool.removeUTXO( inputCoin );
+                }
+
+                //Adding coins back
+                byte[] currentHash = possibleTxs[counter].getHash();
+                for( int outputCounter = 0; outputCounter < possibleTxs[counter].numOutputs(); outputCounter++ ){
+
+                    UTXO inputCoin = new UTXO( currentHash, outputCounter);
+
+                    coinPool.removeUTXO( inputCoin );
+                }
+
+                numOfValids += 1;
+            }
+        }
+
+        //If transactions in the possibleTxs are not all valid, create a new clean array
+        if ( numOfValids != possibleTxs.length ){
+            Transaction[] validTxs = new Transaction[numOfValids];
+            for( int counter  = 0; counter < numOfValids; counter++ ){
+                validTxs[counter] = validTx[counter];
+            }
+            return validTxs;
+        }
+
+        return validTx;
     }
 
 }
