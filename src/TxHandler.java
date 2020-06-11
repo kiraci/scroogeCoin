@@ -1,5 +1,9 @@
+import java.util.ArrayList;
+
 public class TxHandler {
-    
+
+    // Properties
+    UTXOPool coinPool;
 
     /**
      * Creates a public ledger whose current UTXOPool (collection of unspent transaction outputs) is
@@ -7,7 +11,7 @@ public class TxHandler {
      * constructor.
      */
     public TxHandler(UTXOPool utxoPool) {
-        // IMPLEMENT THIS
+        coinPool = new UTXOPool(utxoPool);
     }
 
     /**
@@ -17,10 +21,60 @@ public class TxHandler {
      * (3) no UTXO is claimed multiple times by {@code tx},
      * (4) all of {@code tx}s output values are non-negative, and
      * (5) the sum of {@code tx}s input values is greater than or equal to the sum of its output
-     *     values; and false otherwise.
+     *      *     values; and false otherwise.
      */
     public boolean isValidTx(Transaction tx) {
-        // IMPLEMENT THIS
+
+        //Variable to calculate the amount of coin exists by inputs
+        double sumInputs = 0;
+
+        //Arraylist for condition 3 to check if a coin is just used once
+        ArrayList<UTXO> usedCoins = new ArrayList<>();
+
+        for( int counter = 0; counter < tx.numInputs(); counter++){
+            //Get the input
+            byte[] prevTxHash = tx.getInput(counter).prevTxHash;
+            byte[] signature = tx.getInput(counter).signature;
+            int outputIndex = tx.getInput(counter).outputIndex;
+
+            UTXO inputCoin = new UTXO( prevTxHash, outputIndex);
+
+            // Condition 1 - The coin in the input must be in the pool to be spent
+            if ( ! coinPool.contains(inputCoin) )
+                return false;
+
+            // Condition 2 - Public key, message and signature are needed to check if the input is valid
+            byte[] message = tx.getRawDataToSign( counter );
+
+            if ( ! Crypto.verifySignature( coinPool.getTxOutput(inputCoin).address, message, signature) )
+                return false;
+
+            // Condition 3 - It will return false if UTXO is used before
+            if( usedCoins.contains(inputCoin) )
+                return false;
+
+            sumInputs += coinPool.getTxOutput( inputCoin ).value;
+            usedCoins.add( inputCoin );
+
+        }
+
+        //Variable to compute the amount of coin that are needed by outputs for transaction
+        double sumOutputs = 0;
+
+        //Condition 4 - Checks if there exists a non-negative outputs because balance must not go below zero and computes the sum of outputs
+        for ( int counter = 0; counter < tx.numOutputs(); counter++ ){
+            if ( tx.getOutput( counter ).value < 0 )
+                return false;
+            else
+                sumOutputs += tx.getOutput( counter ).value;
+        }
+
+        //Condition 5 - Checks if the sum of outputs(wanted coins for tx) is less than inputs(balance).
+        //However, I did not understand why sum of outputs and inputs can't be equal to each other.
+        if( sumInputs < sumOutputs )
+            return false;
+
+        return true;
     }
 
     /**
