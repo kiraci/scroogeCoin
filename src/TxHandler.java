@@ -84,14 +84,14 @@ public class TxHandler {
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
         //Array of transactions
-        Transaction[] validTx = new Transaction[ possibleTxs.length ];
-
-        int numOfValids = 0;
+        ArrayList<Transaction> validTxs = new ArrayList<>();
 
         //Go trough all transactions
         for( int counter = 0; counter < possibleTxs.length; counter++ ){
             // If current transaction is valid
-            if ( this.isValidTx(possibleTxs[counter]) ){
+            if ( isValidTx(possibleTxs[counter]) ){
+
+                validTxs.add(possibleTxs[counter]);
 
                 //Clearing the pool
                 for( int inputCounter = 0; inputCounter < possibleTxs[counter].numInputs(); inputCounter++ ){
@@ -104,28 +104,19 @@ public class TxHandler {
                 }
 
                 //Adding coins back
-                byte[] currentHash = possibleTxs[counter].getHash();
                 for( int outputCounter = 0; outputCounter < possibleTxs[counter].numOutputs(); outputCounter++ ){
 
-                    UTXO inputCoin = new UTXO( currentHash, outputCounter);
+                    UTXO inputCoin = new UTXO( possibleTxs[counter].getHash(), outputCounter);
 
-                    coinPool.removeUTXO( inputCoin );
+                    coinPool.addUTXO( inputCoin, possibleTxs[counter].getOutput(outputCounter));
                 }
 
-                numOfValids += 1;
             }
         }
 
-        //If transactions in the possibleTxs are not all valid, create a new clean array
-        if ( numOfValids != possibleTxs.length ){
-            Transaction[] validTxs = new Transaction[numOfValids];
-            for( int counter  = 0; counter < numOfValids; counter++ ){
-                validTxs[counter] = validTx[counter];
-            }
-            return validTxs;
-        }
-
-        return validTx;
+        Transaction[] validTxsArr = new Transaction[validTxs.size()];
+        validTxsArr = validTxs.toArray(validTxsArr);
+        return validTxsArr;
     }
 
 }
